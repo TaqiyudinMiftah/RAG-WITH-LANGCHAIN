@@ -6,5 +6,5 @@ pymupdf
 sentence-transformers
 faiss-cpu
 chromadb
-langchain-groq
+langchain-google-genai
 python-dotenv
