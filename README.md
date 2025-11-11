@@ -1,4 +1,4 @@
-### 📘 Repository Description (English)
+### 📘 Repository Description 
 
 **RAG-With-LangChain** is a personal learning project focused on exploring **Retrieval-Augmented Generation (RAG)** using **LangChain**.
 This repository documents my journey in building and understanding RAG pipelines — from document loading and text preprocessing to vectorization, retrieval, and integration with large language models (LLMs).
