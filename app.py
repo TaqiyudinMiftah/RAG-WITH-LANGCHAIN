@@ -7,6 +7,7 @@ if __name__ == "__main__":
     # store.build_from_documents(docs)
     store.load()
     print(store.query("What is LangChain?", top_k=3))
+    # store.save()
 
 
 
