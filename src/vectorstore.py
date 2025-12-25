@@ -23,7 +23,36 @@ class FaissVectorStore:
         emb_pipe = EmbeddingPipeline(model_name=self.embedding_model, chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
         chunks = emb_pipe.chunk_documents(documents)
         embeddings = emb_pipe.embed_chunks(chunks)
-        metadatas = [{"text": chunk.page_content} for chunk in chunks]
+        
+        # Build enriched metadata with source tracking and document info
+        print(f"[INFO] Building enriched metadata for {len(chunks)} chunks...")
+        metadatas = []
+        for i, chunk in enumerate(chunks):
+            meta = {
+                # Basic chunk info
+                "text": chunk.page_content,
+                "chunk_id": i,
+                "chunk_size": len(chunk.page_content),
+                
+                # Source tracking
+                "source": chunk.metadata.get("source", "unknown"),
+                
+                # PDF-specific fields (if applicable)
+                "page": chunk.metadata.get("page"),
+                "page_label": chunk.metadata.get("page_label"),
+                "total_pages": chunk.metadata.get("total_pages"),
+                
+                # Document metadata
+                "doc_author": chunk.metadata.get("author"),
+                "doc_title": chunk.metadata.get("title"),
+                "creation_date": chunk.metadata.get("creationdate"),
+                "creator": chunk.metadata.get("creator"),
+                
+                # Keep full original metadata for reference
+                "original_metadata": chunk.metadata
+            }
+            metadatas.append(meta)
+        
         self.add_embeddings(np.array(embeddings).astype('float32'), metadatas)
         self.save()
         print(f"[INFO] vector store built and saved to {self.persist_dir}")
