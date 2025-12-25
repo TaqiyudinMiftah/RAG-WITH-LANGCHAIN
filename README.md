@@ -13,12 +13,12 @@
 
 ### Key Features
 
-- ** Multi-Format Document Loading**: PDF, TXT, CSV, JSON support
-- ** Advanced Vector Search**: FAISS-based similarity search with L2 distance
-- ** Enriched Metadata**: 12-field metadata system for better context
-- ** Multiple LLM Providers**: Google Gemini, OpenAI, HuggingFace, Ollama
-- ** Secure API Management**: Environment-based configuration with `.env`
-- ** Production-Ready**: Complete with error handling, logging, and documentation
+- **Multi-Format Document Loading**: PDF, TXT, CSV, JSON support
+- **Advanced Vector Search**: FAISS-based similarity search with L2 distance
+- **Enriched Metadata**: 12-field metadata system for better context
+- **Multiple LLM Providers**: Google Gemini, OpenAI, HuggingFace, Ollama
+- **Secure API Management**: Environment-based configuration with `.env`
+- **Production-Ready**: Complete with error handling, logging, and documentation
 
 ### Architecture
 
