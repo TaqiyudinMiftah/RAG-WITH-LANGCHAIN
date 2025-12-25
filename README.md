@@ -1,4 +1,4 @@
-# RAG-With-LangChain Ì≥öÌ¥ñ
+# RAG-With-LangChain 
 
 > Complete Retrieval-Augmented Generation system for academic paper review and question-answering using LangChain, FAISS, and Google Gemini.
 
@@ -7,18 +7,18 @@
 [![FAISS](https://img.shields.io/badge/FAISS-Vector%20Store-orange.svg)](https://github.com/facebookresearch/faiss)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Ì≥ò Overview
+##  Overview
 
 **RAG-With-LangChain** is a production-ready Retrieval-Augmented Generation (RAG) system designed for academic paper review and intelligent question-answering. The system combines document retrieval with large language models to provide accurate, context-aware answers with citations.
 
 ### Key Features
 
-- **Ì≥Ñ Multi-Format Document Loading**: PDF, TXT, CSV, JSON support
-- **Ì¥ç Advanced Vector Search**: FAISS-based similarity search with L2 distance
-- **Ì∑† Enriched Metadata**: 12-field metadata system for better context
-- **Ì¥ñ Multiple LLM Providers**: Google Gemini, OpenAI, HuggingFace, Ollama
-- **Ì¥í Secure API Management**: Environment-based configuration with `.env`
-- **Ì≥ä Production-Ready**: Complete with error handling, logging, and documentation
+- ** Multi-Format Document Loading**: PDF, TXT, CSV, JSON support
+- ** Advanced Vector Search**: FAISS-based similarity search with L2 distance
+- ** Enriched Metadata**: 12-field metadata system for better context
+- ** Multiple LLM Providers**: Google Gemini, OpenAI, HuggingFace, Ollama
+- ** Secure API Management**: Environment-based configuration with `.env`
+- ** Production-Ready**: Complete with error handling, logging, and documentation
 
 ### Architecture
 
@@ -35,7 +35,7 @@
 ‚îî‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îò     ‚îî‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îò     ‚îî‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îò
 ```
 
-## Ì∫Ä Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -127,7 +127,7 @@ uv run python examples/test_gemini_interactive.py
 uv run python paper_review_rag.py
 ```
 
-## Ì≥Ç Project Structure
+##  Project Structure
 
 ```
 RAG-With-Langchain/
@@ -161,7 +161,7 @@ RAG-With-Langchain/
 ‚îî‚îÄ‚îÄ .env.example                 # Environment template
 ```
 
-## Ì¥ß Configuration
+##  Configuration
 
 ### Environment Variables
 
@@ -210,7 +210,7 @@ Each chunk includes 12 metadata fields:
 | `creator` | Creator tool | "LaTeX" |
 | `original_metadata` | Raw metadata | {...} |
 
-## Ì≥ä Current Stats
+##  Current Stats
 
 - **Documents Indexed**: 6 papers (4 PDFs + 2 TXTs)
 - **Total Chunks**: 295 chunks
@@ -218,7 +218,7 @@ Each chunk includes 12 metadata fields:
 - **Vector Store**: FAISS IndexFlatL2 (exact L2 distance)
 - **LLM**: Google Gemini Pro (gemini-pro)
 
-## Ì¥ñ Supported LLM Providers
+##  Supported LLM Providers
 
 | Provider | Model | Status | Setup |
 |----------|-------|--------|-------|
@@ -227,7 +227,7 @@ Each chunk includes 12 metadata fields:
 | HuggingFace | Inference API | ‚ö†Ô∏è Code ready | [Get token](https://huggingface.co/settings/tokens) |
 | Ollama | Local models | ‚ö†Ô∏è Code ready | [Install Ollama](https://ollama.ai/) |
 
-## Ì≥ñ Documentation
+##  Documentation
 
 Comprehensive documentation available in the `docs/` folder:
 
@@ -237,7 +237,7 @@ Comprehensive documentation available in the `docs/` folder:
 - **[ENV_SETUP.md](docs/ENV_SETUP.md)** - Environment configuration guide
 - **[GIT_GUIDE.md](docs/GIT_GUIDE.md)** - Git workflow and best practices
 
-## Ì∑™ Examples
+##  Examples
 
 ### Add New Paper
 
@@ -285,7 +285,7 @@ response = rag.ask(
 )
 ```
 
-## Ì¥í Security
+##  Security
 
 - ‚úÖ API keys stored in `.env` (not committed to Git)
 - ‚úÖ `.env.example` provided as template
@@ -294,7 +294,7 @@ response = rag.ask(
 
 See [docs/GIT_GUIDE.md](docs/GIT_GUIDE.md) for security best practices.
 
-## Ìª†Ô∏è Development
+## Ô∏è Development
 
 ### Rebuild Vector Store
 
@@ -325,14 +325,14 @@ uv run python examples/test_gemini_interactive.py
 uv run python paper_review_rag.py
 ```
 
-## Ì≥à Performance
+##  Performance
 
 - **Query Speed**: ~50ms per query (retrieval only)
 - **Embedding Speed**: ~1000 docs/minute
 - **Memory Usage**: ~200MB (295 chunks loaded)
 - **Storage**: ~2MB (vector store only, excluding PDFs)
 
-## Ì∑∫Ô∏è Roadmap
+## Ô∏è Roadmap
 
 - [ ] Add more LLM providers (Claude, Llama)
 - [ ] Implement hybrid search (dense + sparse)
@@ -343,7 +343,7 @@ uv run python paper_review_rag.py
 - [ ] Docker containerization
 - [ ] API server with FastAPI
 
-## Ì¥ù Contributing
+##  Contributing
 
 This is a personal learning project, but contributions are welcome!
 
@@ -353,18 +353,18 @@ This is a personal learning project, but contributions are welcome!
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## Ì≥ù License
+##  License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Ìπè Acknowledgments
+##  Acknowledgments
 
 - [LangChain](https://python.langchain.com/) - RAG framework
 - [FAISS](https://github.com/facebookresearch/faiss) - Vector similarity search
 - [Sentence Transformers](https://www.sbert.net/) - Embedding models
 - [Google Gemini](https://ai.google.dev/) - LLM API
 
-## Ì≥ß Contact
+##  Contact
 
 For questions or feedback, please open an issue or reach out through GitHub.
 
