@@ -7,6 +7,10 @@ RAG dengan LLM Integration - 3 Options
 """
 from src.vectorstore import FaissVectorStore
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 class RAGWithLLM:
     """RAG System dengan berbagai pilihan LLM"""
@@ -323,13 +327,17 @@ PILIHAN LLM:
     # Demo dengan Gemini (FREE & POWERFUL)
     print("\nUsing Google Gemini API (FREE)...")
     
-    # Option 1: Pass API key directly (for demo)
-    api_key = "AIzaSyBsyQhvSFn5TcJr8dEA-z4lAGIeVCdIE1M"
-    rag = RAGWithLLM("faiss_store", llm_provider="gemini", api_key=api_key)
+    # IMPORTANT: DO NOT hardcode API keys in source code!
+    # Use environment variable instead for security
     
-    # Option 2: Use environment variable (recommended)
-    # os.environ["GEMINI_API_KEY"] = "your-key-here"
-    # rag = RAGWithLLM("faiss_store", llm_provider="gemini")
+    # Option 1: Set environment variable first
+    # In terminal: export GEMINI_API_KEY="your-key-here"
+    # Or in code: os.environ["GEMINI_API_KEY"] = "your-key-here"
+    rag = RAGWithLLM("faiss_store", llm_provider="gemini")
+    
+    # Option 2: Pass API key directly (only for local testing)
+    # api_key = "your-api-key-here"  # Replace with your actual key
+    # rag = RAGWithLLM("faiss_store", llm_provider="gemini", api_key=api_key)
     
     question = "What is the main contribution of the climate change sentiment paper?"
     result = rag.query(question, top_k=3)
