@@ -62,21 +62,79 @@
 
 3. **Setup environment variables**
    ```bash
-   # Copy template
-   cp .env.example .env
-   
-   # Edit .env and add your API key
+   # Edit .env file dan tambahkan API key Anda
    # GEMINI_API_KEY=your-api-key-here
    ```
 
 4. **Build vector store**
    ```bash
+   # Letakkan PDF paper di folder: data/pdf/
+   # Kemudian build vector store:
    uv run python scripts/rebuild_with_metadata.py
    ```
 
+### 🚀 Quick Launcher (RECOMMENDED)
+
+Gunakan launcher script untuk akses mudah ke semua fungsi:
+
+**Windows:**
+```bash
+launcher.bat
+```
+
+**Linux/Mac:**
+```bash
+bash launcher.sh
+```
+
+Menu akan menampilkan:
+1. 💬 **Interactive Chat** - Tanya jawab dengan paper collection
+2. 📚 **Build Vector Store** - Index paper PDF ke database
+3. 🔍 **Inspect Vector Store** - Lihat isi vector store
+4. 📊 **Paper Review Demo** - Demo review paper
+5. 🧪 **Test RAG with LLM** - Test berbagai LLM providers
+
 ### Usage
 
-#### Basic Example
+#### 💬 Interactive Chat (Main Feature)
+
+```bash
+# Start interactive chat
+uv run python chat_with_rag.py
+
+# Dengan custom parameters
+uv run python chat_with_rag.py --llm gemini --top_k 5
+```
+
+Contoh interaksi:
+```
+❓ You: What is the main contribution of the climate change paper?
+
+🤖 Assistant:
+The main contribution is... [detailed answer with citations]
+
+📚 Sources:
+   • climate_paper.pdf - Page 3 (relevance: 95%)
+   • climate_paper.pdf - Page 5 (relevance: 89%)
+```
+
+#### Basic Example (Programmatic)
+
+```python
+from chat_with_rag import InteractiveRAGChat
+
+# Initialize chat system
+chat = InteractiveRAGChat("faiss_store", llm_provider="gemini")
+
+# Single query
+result = chat.query("What methods are used in sentiment analysis?", top_k=3)
+print(result['answer'])
+
+# Interactive mode
+chat.chat_loop()
+```
+
+#### Advanced: Direct Vector Store Access
 
 ```python
 from src.vectorstore import FaissVectorStore
@@ -93,61 +151,56 @@ for result in results:
     print(f"Similarity: {result['similarity_score']:.4f}\n")
 ```
 
-#### Complete RAG with LLM
-
-```python
-from rag_with_llm import RAGWithLLM
-
-# Initialize RAG system
-rag = RAGWithLLM(
-    vector_store_path="faiss_store",
-    llm_provider="gemini"
-)
-
-# Ask question
-response = rag.ask(
-    question="What methods are used in sentiment analysis?",
-    top_k=5
-)
-
-print(response['answer'])
-print("\nSources:", response['sources'])
-```
-
 #### Demo Scripts
 
 ```bash
-# Quick demo with single question
+# Interactive chat (RECOMMENDED)
+uv run python chat_with_rag.py
+
+# Paper review demo
+uv run python examples/paper_review_rag.py
+
+# Test RAG with different LLMs
+uv run python examples/rag_with_llm.py
+
+# Quick Gemini demo
 uv run python examples/demo_gemini.py
 
-# Interactive demo with multiple questions
+# Interactive multi-question demo
 uv run python examples/test_gemini_interactive.py
-
-# Paper review system
-uv run python paper_review_rag.py
 ```
 
 ##  Project Structure
 
 ```
 RAG-With-Langchain/
+├── chat_with_rag.py             # 💬 MAIN: Interactive chat interface
+├── launcher.bat / launcher.sh   # 🚀 Quick launcher menu
+├── .env                          # 🔑 API keys (create from .env.example)
 ├── src/                          # Core source code
 │   ├── data_loader.py           # Document loaders (PDF, TXT, CSV, JSON)
 │   ├── embedding.py             # Embedding pipeline with chunking
 │   └── vectorstore.py           # FAISS vector store with metadata
-├── examples/                     # Usage examples
-│   ├── demo_gemini.py           # Quick demo script
-│   ├── test_gemini_interactive.py  # Interactive demo
+├── examples/                     # Usage examples & demos
+│   ├── paper_review_rag.py      # Paper review system demo
+│   ├── rag_with_llm.py          # RAG with multiple LLM providers
+│   ├── demo_gemini.py           # Quick Gemini demo
+│   ├── test_gemini_interactive.py  # Interactive multi-question demo
 │   └── app.py                   # Basic app example
 ├── scripts/                      # Utility scripts
-│   ├── rebuild_with_metadata.py # Rebuild vector store
+│   ├── rebuild_with_metadata.py # 📚 Rebuild vector store
 │   ├── inspect_document.py      # Inspect document structure
 │   ├── inspect_metadata.py      # View metadata
 │   └── inspect_metadata_comparison.py  # Compare metadata
-├── docs/                         # Documentation
-│   ├── RAG_GEMINI_SUMMARY.md    # Complete system overview
-│   ├── PAPER_REVIEW_GUIDE.md    # Paper review workflow
-│   ├── METADATA_GUIDE.md        # Metadata documentation
+├── data/                         # Data directory
+│   ├── pdf/                     # 📄 Place your PDF papers here
+│   ├── text_files/              # Text documents
+│   └── vector_store/            # Vector database (auto-generated)
+├── faiss_store/                  # FAISS index & metadata (auto-generated)
+└── docs/                         # Documentation
+    ├── RAG_GEMINI_SUMMARY.md    # Complete system overview
+    ├── PAPER_REVIEW_GUIDE.md    # Paper review workflow
+    ├── METADATA_GUIDE.md        # Metadata documentation
 │   ├── ENV_SETUP.md             # Environment setup guide
 │   ├── GIT_GUIDE.md             # Git workflow guide
 │   └── PRE_PUSH_SUMMARY.md      # Pre-push checklist
