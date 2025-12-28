@@ -10,6 +10,7 @@ Usage:
     python chat_with_rag.py --llm gemini --top_k 5
 """
 from src.vectorstore import FaissVectorStore
+from collections import Counter
 import os
 import sys
 from dotenv import load_dotenv
@@ -68,7 +69,6 @@ class InteractiveRAGChat:
     
     def _show_available_papers(self):
         """Tampilkan daftar paper yang tersedia"""
-        from collections import Counter
         
         sources = [m['source'] for m in self.store.metadata]
         paper_stats = Counter(sources)
@@ -265,7 +265,7 @@ Provide a clear and concise answer with citations."""
                 # Show sources
                 print(f"\n📚 Sources:")
                 for src in result['sources']:
-                    print(f"   • {src['source']} - Page {src['page']} (relevance: {src['score']:.2%})")
+                    print(f"   • {src['source']} - Page {src['page']} (relevance (euclian distance): {src['score']:.3f})")
                 
             except KeyboardInterrupt:
                 print("\n\n👋 Chat dihentikan. Terima kasih!")
