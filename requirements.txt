@@ -8,3 +8,6 @@ faiss-cpu
 chromadb
 langchain-google-genai
 python-dotenv
+streamlit
+google-generativeai
+watchdog
