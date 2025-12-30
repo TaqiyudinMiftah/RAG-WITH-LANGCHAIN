@@ -72,20 +72,91 @@ def process_uploaded_file(uploaded_file, temp_dir):
     except Exception as e:
         return False, str(e)
 
-def generate_answer(question, context):
+def format_chat_history(messages, max_turns=10):
+    """Format recent chat history for context"""
+    if not messages:
+        return ""
+    
+    # Get last N turns (excluding the current question)
+    recent = messages[-(max_turns * 2):] if len(messages) > max_turns * 2 else messages
+    
+    history_lines = []
+    for msg in recent:
+        role = "User" if msg["role"] == "user" else "Assistant"
+        history_lines.append(f"{role}: {msg['content']}")
+    
+    return "\n".join(history_lines)
+
+def is_conversational_query(question):
+    """Check if the query is a greeting or conversational message"""
+    greetings = [
+        'hello', 'hi', 'hey', 'halo', 'hai', 'hei',
+        'good morning', 'good afternoon', 'good evening', 'good night',
+        'selamat pagi', 'selamat siang', 'selamat sore', 'selamat malam',
+        'what\'s up', 'how are you', 'apa kabar', 'thanks', 'thank you',
+        'terima kasih', 'bye', 'goodbye', 'sampai jumpa'
+    ]
+    question_lower = question.lower().strip()
+    
+    # Check if it's a short greeting
+    if len(question_lower.split()) <= 3:
+        for greeting in greetings:
+            if greeting in question_lower:
+                return True
+    return False
+
+def generate_conversational_response(question, chat_history=""):
+    """Generate a friendly response for greetings"""
     try:
         api_key = os.getenv("GEMINI_API_KEY")
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
         
-        prompt = f"""Answer based on context:
+        history_section = f"\nCONVERSATION HISTORY:\n{chat_history}\n" if chat_history else ""
+        
+        prompt = f"""You are a helpful research assistant for document analysis.
+{history_section}
+The user said: "{question}"
 
-CONTEXT:
+Respond naturally and briefly as a friendly assistant. 
+If it's a greeting, greet back warmly and offer to help with document questions.
+Keep your response SHORT (1-2 sentences max)."""
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+def generate_answer(question, context, has_relevant_context=True, chat_history=""):
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        history_section = f"\nCONVERSATION HISTORY:\n{chat_history}\n" if chat_history else ""
+        
+        if not has_relevant_context:
+            prompt = f"""You are a helpful research assistant for document analysis.
+{history_section}
+CURRENT QUESTION: "{question}"
+
+No relevant documents were found for this query.
+Respond helpfully: if it's a general question, answer briefly. 
+If it needs document context, let them know you couldn't find relevant information and suggest rephrasing.
+Use conversation history to understand context (e.g., "it", "that", "more details").
+Keep response concise."""
+        else:
+            prompt = f"""You are a helpful research assistant. Answer based on the document context and conversation history.
+{history_section}
+DOCUMENT CONTEXT:
 {context}
 
-QUESTION: {question}
+CURRENT QUESTION: {question}
 
-Provide clear answer with citations [Source: filename, Page: X]
+Instructions:
+- Use conversation history to understand references (e.g., "it", "that", "explain more")
+- Provide clear answer with citations [Source: filename, Page: X]
+- Be concise but comprehensive
 """
         
         response = model.generate_content(prompt)
@@ -104,29 +175,57 @@ def get_relevance_indicator(distance):
     else:
         return "🔴 Less Relevant"
 
+# Distance threshold - documents with distance above this are considered irrelevant
+RELEVANCE_THRESHOLD = 1.0  # L2 distance threshold (lower = more strict)
+
 def query_documents(question, top_k=3):
     if st.session_state.vector_store is None:
         return None, []
+    
+    # Get conversation history for multi-turn context
+    chat_history = format_chat_history(st.session_state.messages)
+    
+    # Check if it's a greeting/conversational query first
+    if is_conversational_query(question):
+        answer = generate_conversational_response(question, chat_history)
+        return answer, []
     
     try:
         results = st.session_state.vector_store.query(question, top_k=top_k)
         
         if not results:
-            return "No relevant documents found.", []
+            return generate_answer(question, "", has_relevant_context=False, chat_history=chat_history), []
+        
+        # Filter results by relevance threshold
+        relevant_results = [
+            r for r in results 
+            if r['similarity_score'] < RELEVANCE_THRESHOLD
+        ]
+        
+        # If no relevant results after filtering, respond without context
+        if not relevant_results:
+            all_sources = [{
+                'source': os.path.basename(r['source']),
+                'page': r.get('page_label', 'N/A'),
+                'score': r['similarity_score'],
+                'preview': r['text'][:200] + "..."
+            } for r in results]
+            answer = generate_answer(question, "", has_relevant_context=False, chat_history=chat_history)
+            return answer, all_sources  # Still show sources but mark as not relevant
         
         context = "\n\n".join([
             f"[{os.path.basename(r['source'])}, Page {r.get('page_label', 'N/A')}]\n{r['text']}"
-            for r in results
+            for r in relevant_results
         ])
         
-        answer = generate_answer(question, context)
+        answer = generate_answer(question, context, has_relevant_context=True, chat_history=chat_history)
         
         sources = [{
             'source': os.path.basename(r['source']),
             'page': r.get('page_label', 'N/A'),
             'score': r['similarity_score'],
             'preview': r['text'][:200] + "..."
-        } for r in results]
+        } for r in results]  # Show all results in sources for transparency
         
         return answer, sources
     except Exception as e:
