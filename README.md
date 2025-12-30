@@ -19,6 +19,9 @@
 - **Multiple LLM Providers**: Google Gemini, OpenAI, HuggingFace, Ollama
 - **Secure API Management**: Environment-based configuration with `.env`
 - **Production-Ready**: Complete with error handling, logging, and documentation
+- **🤖 Agentic RAG**: Full document reading with Gemini Function Calling
+- **💬 Persistent Chat History**: PostgreSQL database for conversation persistence
+- **🌐 Streamlit Web App**: Modern web interface with document upload
 
 ### Architecture
 
@@ -29,10 +32,10 @@
 └─────────────┘     └──────────────┘     └─────────────┘
                                                   │
                                                   ▼
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   Answer    │<────│   LLM        │<────│    FAISS    │
-│ + Citations │     │  (Gemini)    │     │ Vector Store│
-└─────────────┘     └──────────────┘     └─────────────┘
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Answer    │<────│   LLM        │<────│    FAISS    │     │ PostgreSQL  │
+│ + Citations │     │  (Gemini)    │     │ Vector Store│     │ Chat History│
+└─────────────┘     └──────────────┘     └─────────────┘     └─────────────┘
 ```
 
 ##  Quick Start
@@ -42,6 +45,7 @@
 - Python 3.9 or higher
 - [UV package manager](https://github.com/astral-sh/uv) (recommended) or pip
 - Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- PostgreSQL database (optional, for chat history persistence)
 
 ### Installation
 
@@ -93,6 +97,41 @@ Menu akan menampilkan:
 3. 🔍 **Inspect Vector Store** - Lihat isi vector store
 4. 📊 **Paper Review Demo** - Demo review paper
 5. 🧪 **Test RAG with LLM** - Test berbagai LLM providers
+
+### 🌐 Streamlit Web App (Recommended)
+
+**Windows:**
+```bash
+run_webapp.bat
+# Or: streamlit run app.py
+```
+
+**Linux/Mac:**
+```bash
+bash run_webapp.sh
+# Or: streamlit run app.py
+```
+
+#### Features:
+- 📤 **Upload Documents**: Drag & drop PDF/TXT files
+- 💬 **Chat History**: Persistent conversations like ChatGPT
+- 🤖 **Agentic RAG**: Full document reading with function calling
+- 🔍 **Smart Search**: Semantic search with relevance scoring
+- ⭐ **Bookmarks**: Save important answers
+- 📥 **Export**: Download conversations as MD/JSON
+
+#### PostgreSQL Setup (Optional, for Chat History)
+
+1. Install PostgreSQL locally or use a cloud service (Supabase, Railway, etc.)
+2. Create a database:
+   ```sql
+   CREATE DATABASE rag_chat;
+   ```
+3. Add connection string to `.env`:
+   ```bash
+   DATABASE_URL=postgresql://postgres:password@localhost:5432/rag_chat
+   ```
+4. Tables are created automatically on first run
 
 ### Usage
 
