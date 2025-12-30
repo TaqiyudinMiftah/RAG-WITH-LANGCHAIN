@@ -9,6 +9,7 @@ import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
+from urllib.parse import urlparse, unquote
 
 try:
     import psycopg2
@@ -19,42 +20,19 @@ except ImportError:
     print("Warning: psycopg2 not installed. Database features disabled.")
 
 def parse_database_url(url: str) -> dict:
-    """Parse DATABASE_URL into connection parameters"""
+    """Parse DATABASE_URL into connection parameters using urllib"""
     if not url:
         return None
     
     try:
-        # postgresql://user:password@host:port/database
-        url = url.replace("postgresql://", "").replace("postgres://", "")
-        
-        # Split user:password from host:port/database
-        if "@" in url:
-            credentials, rest = url.split("@", 1)
-            if ":" in credentials:
-                user, password = credentials.split(":", 1)
-            else:
-                user, password = credentials, ""
-        else:
-            user, password = "postgres", ""
-            rest = url
-        
-        # Split host:port from database
-        if "/" in rest:
-            host_port, database = rest.split("/", 1)
-        else:
-            host_port, database = rest, "rag_chat"
-        
-        if ":" in host_port:
-            host, port = host_port.split(":", 1)
-        else:
-            host, port = host_port, "5432"
+        parsed = urlparse(url)
         
         return {
-            "host": host,
-            "port": int(port),
-            "user": user,
-            "password": password,
-            "database": database.split("?")[0]  # Remove query params
+            "host": parsed.hostname or "localhost",
+            "port": parsed.port or 5432,
+            "user": unquote(parsed.username or "postgres"),
+            "password": unquote(parsed.password or ""),
+            "database": parsed.path.lstrip("/") or "postgres"
         }
     except Exception as e:
         print(f"Error parsing DATABASE_URL: {e}")
