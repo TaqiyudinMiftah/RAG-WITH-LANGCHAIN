@@ -9,5 +9,5 @@ chromadb
 langchain-google-genai
 python-dotenv
 streamlit
-google-generativeai
+google-genai
 watchdog
