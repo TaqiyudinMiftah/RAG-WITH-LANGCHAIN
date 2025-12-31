@@ -165,18 +165,30 @@ def initialize_vector_store():
 
 def process_uploaded_file(uploaded_file, temp_dir):
     try:
-        file_path = os.path.join(temp_dir, uploaded_file.name)
-        with open(file_path, "wb") as f:
+        # Save to temp dir first for processing
+        temp_path = os.path.join(temp_dir, uploaded_file.name)
+        with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
         file_extension = Path(uploaded_file.name).suffix.lower()
         
+        # Also save to data/pdf or data/text_files permanently
         if file_extension == '.pdf':
-            loader = PyPDFLoader(file_path)
+            permanent_dir = Path("data/pdf")
+            loader = PyPDFLoader(temp_path)
         elif file_extension == '.txt':
-            loader = TextLoader(file_path)
+            permanent_dir = Path("data/text_files")
+            loader = TextLoader(temp_path)
         else:
             raise ValueError(f"Unsupported file type: {file_extension}")
+        
+        # Create permanent directory if not exists and save file
+        permanent_dir.mkdir(parents=True, exist_ok=True)
+        permanent_path = permanent_dir / uploaded_file.name
+        
+        # Copy to permanent location
+        import shutil
+        shutil.copy2(temp_path, permanent_path)
         
         docs = loader.load()
         
@@ -196,7 +208,8 @@ def process_uploaded_file(uploaded_file, temp_dir):
         st.session_state.document_contents[uploaded_file.name] = {
             'content': full_content,
             'pages': len(docs),
-            'metadata': docs[0].metadata if docs else {}
+            'metadata': docs[0].metadata if docs else {},
+            'path': str(permanent_path)  # Store permanent path
         }
         
         return True, len(docs)
