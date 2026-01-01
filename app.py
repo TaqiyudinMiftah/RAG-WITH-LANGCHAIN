@@ -4,12 +4,25 @@ import sys
 import tempfile
 import re
 import json
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from sentence_transformers import CrossEncoder
 
 load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('rag_app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 from src.vectorstore import FaissVectorStore
 from src.database import (
@@ -31,10 +44,28 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Constants
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+SUPPORTED_EXTENSIONS = ['.pdf', '.txt']
+RELEVANCE_THRESHOLD = 1.0
+MAX_RETRIES = 3
+
 # Initialize Gemini client
+@st.cache_resource
 def get_gemini_client():
-    api_key = os.getenv("GEMINI_API_KEY")
-    return genai.Client(api_key=api_key)
+    """Initialize Gemini client with API key (cached)"""
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            logger.error("GEMINI_API_KEY not found")
+            raise ValueError("GEMINI_API_KEY not found in environment variables")
+        
+        client = genai.Client(api_key=api_key)
+        logger.info("Gemini client initialized successfully")
+        return client
+    except Exception as e:
+        logger.error(f"Failed to initialize Gemini client: {e}")
+        raise
 
 # Session state initialization
 if 'messages' not in st.session_state:
@@ -146,61 +177,98 @@ def format_timestamp(dt):
     else:
         return dt.strftime("%b %d, %Y")
 
+@st.cache_resource
+def load_reranker_model():
+    """Load cross-encoder reranker model (cached)"""
+    try:
+        logger.info("Loading reranker model...")
+        model = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+        logger.info("Reranker model loaded successfully")
+        return model
+    except Exception as e:
+        logger.error(f"Failed to load reranker: {e}")
+        return None
+
+@st.cache_resource(ttl=3600)
 def initialize_vector_store():
+    """Initialize or load the FAISS vector store (cached for 1 hour)"""
     try:
         store = FaissVectorStore("faiss_store")
         if os.path.exists("faiss_store/faiss_index.bin"):
             store.load()
+            num_chunks = len(store.metadata) if store.metadata else 0
+            logger.info(f"Vector store loaded with {num_chunks} chunks")
             st.session_state.vector_store = store
-            if store.metadata:
-                sources = set([os.path.basename(m['source']) for m in store.metadata])
-                st.session_state.documents_loaded = list(sources)
-            return store, len(store.metadata)
+            return store, num_chunks
         else:
-            st.session_state.vector_store = store
-            return store, 0
+            logger.warning("No vector store found")
+            st.session_state.vector_store = None
+            return None, 0
     except Exception as e:
-        st.error(f"Error loading vector store: {str(e)}")
+        logger.error(f"Error loading vector store: {e}")
+        st.error(f"❌ Failed to load vector store: {str(e)}")
+        logger.error(f"Error loading vector store: {e}")
+        st.error(f"❌ Failed to load vector store: {str(e)}")
         return None, 0
 
 def process_uploaded_file(uploaded_file, temp_dir):
+    """Process uploaded file with validation and error handling"""
+    import shutil
+    
     try:
+        # Validation
+        if uploaded_file.size > MAX_FILE_SIZE:
+            error_msg = f"File too large! Max size: {MAX_FILE_SIZE / 1024 / 1024:.0f}MB"
+            logger.warning(f"Upload rejected: {error_msg} - File: {uploaded_file.name}")
+            return False, error_msg
+        
+        file_extension = Path(uploaded_file.name).suffix.lower()
+        if file_extension not in SUPPORTED_EXTENSIONS:
+            error_msg = f"Unsupported file type: {file_extension}. Supported: {', '.join(SUPPORTED_EXTENSIONS)}"
+            logger.warning(f"Upload rejected: {error_msg}")
+            return False, error_msg
+        
         # Save to temp dir first for processing
         temp_path = os.path.join(temp_dir, uploaded_file.name)
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
+        logger.info(f"File saved to temp: {uploaded_file.name}")
         
-        file_extension = Path(uploaded_file.name).suffix.lower()
-        
-        # Also save to data/pdf or data/text_files permanently
+        # Determine loader and permanent directory
         if file_extension == '.pdf':
             permanent_dir = Path("data/pdf")
             loader = PyPDFLoader(temp_path)
         elif file_extension == '.txt':
             permanent_dir = Path("data/text_files")
             loader = TextLoader(temp_path)
-        else:
-            raise ValueError(f"Unsupported file type: {file_extension}")
         
-        # Create permanent directory if not exists and save file
+        # Create permanent directory and save file
         permanent_dir.mkdir(parents=True, exist_ok=True)
         permanent_path = permanent_dir / uploaded_file.name
-        
-        # Copy to permanent location
-        import shutil
         shutil.copy2(temp_path, permanent_path)
+        logger.info(f"File saved permanently: {permanent_path}")
         
+        # Load documents
         docs = loader.load()
+        if not docs:
+            error_msg = "No content extracted from file"
+            logger.error(f"Load failed: {error_msg}")
+            return False, error_msg
         
+        # Initialize vector store if needed
         if st.session_state.vector_store is None:
             st.session_state.vector_store = FaissVectorStore("faiss_store")
+            logger.info("Initialized new vector store")
         
+        # Build embeddings
         st.session_state.vector_store.build_from_documents(docs)
+        logger.info(f"Built embeddings for {len(docs)} documents")
         
+        # Update session state
         if uploaded_file.name not in st.session_state.documents_loaded:
             st.session_state.documents_loaded.append(uploaded_file.name)
         
-        # Store full document content for full-document reading
+        # Store full document content
         full_content = "\n\n".join([
             f"[Page {doc.metadata.get('page', i+1)}]\n{doc.page_content}"
             for i, doc in enumerate(docs)
@@ -209,12 +277,25 @@ def process_uploaded_file(uploaded_file, temp_dir):
             'content': full_content,
             'pages': len(docs),
             'metadata': docs[0].metadata if docs else {},
-            'path': str(permanent_path)  # Store permanent path
+            'path': str(permanent_path)
         }
         
+        # Clear cache to reload vector store
+        st.cache_resource.clear()
+        
+        logger.info(f"Successfully processed: {uploaded_file.name} ({len(docs)} pages)")
         return True, len(docs)
+        
     except Exception as e:
-        return False, str(e)
+        logger.error(f"Error processing {uploaded_file.name}: {e}", exc_info=True)
+        # Rollback: remove partial files if any
+        try:
+            if 'permanent_path' in locals() and permanent_path.exists():
+                permanent_path.unlink()
+                logger.info(f"Rolled back: removed {permanent_path}")
+        except:
+            pass
+        return False, f"Processing error: {str(e)}"
 
 def format_chat_history(messages, max_turns=10):
     """Format recent chat history for context"""
@@ -762,6 +843,34 @@ def get_relevance_indicator(distance):
 # Distance threshold - documents with distance above this are considered irrelevant
 RELEVANCE_THRESHOLD = 1.0  # L2 distance threshold (lower = more strict)
 
+def rerank_results(query: str, results: list, top_k: int = 3) -> list:
+    """Rerank search results using cross-encoder for better relevance"""
+    try:
+        reranker = load_reranker_model()
+        if not reranker or not results:
+            return results[:top_k]
+        
+        logger.info(f"Reranking {len(results)} results...")
+        
+        # Prepare query-document pairs
+        pairs = [(query, r['text']) for r in results]
+        
+        # Get reranking scores
+        scores = reranker.predict(pairs)
+        
+        # Sort by score (higher is better)
+        for i, result in enumerate(results):
+            result['rerank_score'] = float(scores[i])
+        
+        reranked = sorted(results, key=lambda x: x['rerank_score'], reverse=True)
+        logger.info(f"Reranking complete. Top score: {reranked[0]['rerank_score']:.3f}")
+        
+        return reranked[:top_k]
+        
+    except Exception as e:
+        logger.error(f"Reranking failed: {e}. Returning original results.")
+        return results[:top_k]
+
 def query_documents(question, top_k=3, use_agentic=True):
     """
     Main query function that routes to either Agentic RAG or simple RAG.
@@ -786,12 +895,17 @@ def query_documents(question, top_k=3, use_agentic=True):
             st.warning(f"Agentic RAG failed, falling back to simple RAG: {str(e)}")
             # Fall through to simple RAG
     
-    # Fallback: Simple RAG
+    # Fallback: Simple RAG with reranking
     try:
-        results = st.session_state.vector_store.query(question, top_k=top_k)
+        # Retrieve more candidates for reranking
+        retrieve_k = top_k * 3  # Get 3x more for reranking
+        results = st.session_state.vector_store.query(question, top_k=retrieve_k)
         
         if not results:
+            logger.info("No search results found")
             return generate_answer(question, "", has_relevant_context=False, chat_history=chat_history), [], []
+        
+        logger.info(f"Retrieved {len(results)} candidates for reranking")
         
         # Filter results by relevance threshold
         relevant_results = [
@@ -801,6 +915,7 @@ def query_documents(question, top_k=3, use_agentic=True):
         
         # If no relevant results after filtering, respond without context
         if not relevant_results:
+            logger.info("No results passed relevance threshold")
             all_sources = [{
                 'source': os.path.basename(r['source']),
                 'page': r.get('page_label', 'N/A'),
@@ -810,9 +925,13 @@ def query_documents(question, top_k=3, use_agentic=True):
             answer = generate_answer(question, "", has_relevant_context=False, chat_history=chat_history)
             return answer, all_sources, []
         
+        # Apply reranking to get best results
+        reranked_results = rerank_results(question, relevant_results, top_k=top_k)
+        logger.info(f"Reranked to top {len(reranked_results)} results")
+        
         context = "\n\n".join([
             f"[{os.path.basename(r['source'])}, Page {r.get('page_label', 'N/A')}]\n{r['text']}"
-            for r in relevant_results
+            for r in reranked_results
         ])
         
         answer = generate_answer(question, context, has_relevant_context=True, chat_history=chat_history)
@@ -821,11 +940,15 @@ def query_documents(question, top_k=3, use_agentic=True):
             'source': os.path.basename(r['source']),
             'page': r.get('page_label', 'N/A'),
             'score': r['similarity_score'],
+            'rerank_score': r.get('rerank_score', 0),
             'preview': r['text'][:200] + "..."
-        } for r in results]
+        } for r in reranked_results]
         
+        logger.info(f"Generated answer with {len(sources)} sources")
         return answer, sources, []
     except Exception as e:
+        logger.error(f"Query error: {e}", exc_info=True)
+        st.error(f"❌ Query failed: {str(e)}")
         return f"Error: {str(e)}", [], []
 
 def main():
@@ -1087,7 +1210,9 @@ def main():
                         for src_idx, src in enumerate(message["sources"], 1):
                             st.write(f"**{src_idx}. {src['source']}** - Page {src['page']}")
                             if 'score' in src:
-                                st.write(f"Distance: {src['score']:.3f} - {get_relevance_indicator(src['score'])}")
+                                st.write(f"Similarity: {src['score']:.3f} - {get_relevance_indicator(src['score'])}")
+                            if 'rerank_score' in src and src['rerank_score'] > 0:
+                                st.write(f"🎯 Rerank Score: {src['rerank_score']:.3f}")
                             st.write(src.get('preview', ''))
                             st.markdown("---")
                 
@@ -1139,7 +1264,9 @@ def main():
                         for src_idx, src in enumerate(sources, 1):
                             st.write(f"**{src_idx}. {src['source']}** - Page {src['page']}")
                             if 'score' in src:
-                                st.write(f"Distance: {src['score']:.3f} - {get_relevance_indicator(src['score'])}")
+                                st.write(f"Similarity: {src['score']:.3f} - {get_relevance_indicator(src['score'])}")
+                            if 'rerank_score' in src and src['rerank_score'] > 0:
+                                st.write(f"🎯 Rerank Score: {src['rerank_score']:.3f}")
                             st.write(src.get('preview', ''))
                             st.markdown("---")
         
