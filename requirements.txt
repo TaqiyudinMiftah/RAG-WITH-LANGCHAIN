@@ -11,3 +11,4 @@ python-dotenv
 streamlit
 google-genai
 watchdog
+psycopg2-binary
