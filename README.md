@@ -135,7 +135,7 @@ bash run_webapp.sh
 
 ### Usage
 
-#### 💬 Interactive Chat (Main Feature)
+#### Interactive Chat (Main Feature)
 
 ```bash
 # Start interactive chat
