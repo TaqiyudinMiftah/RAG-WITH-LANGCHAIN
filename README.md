@@ -193,7 +193,7 @@ for result in results:
 #### Demo Scripts
 
 ```bash
-# Interactive chat (RECOMMENDED)
+# Interactive chat 
 uv run python chat_with_rag.py
 
 # Paper review demo
